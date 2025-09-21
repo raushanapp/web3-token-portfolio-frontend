@@ -64,16 +64,16 @@ export const selectPortfolioSummary = createSelector(
       (totalChange24h / (totalValue - totalChange24h)) * 100 : 0;
 
     // ✅ FIXED: Properly sort to find top gainer and loser
-    const sortedByChange = [...portfolio]
-      .filter(token => token.price_change_percentage_24h != null)
-      .sort((a, b) => (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0));
+    // const sortedByChange = [...portfolio]
+    //   .filter(token => token.price_change_percentage_24h != null)
+    //   .sort((a, b) => (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0));
 
     return {
       totalValue,
       totalChange24h,
       totalChangePercent24h,
-      topGainer: sortedByChange[0] || null,
-      topLoser: sortedByChange[sortedByChange.length - 1] || null,
+      topGainer:  null,
+      topLoser:  null,
       lastUpdated: new Date().toISOString(),
     };
   }

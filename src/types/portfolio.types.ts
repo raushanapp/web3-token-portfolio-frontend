@@ -4,10 +4,10 @@ export interface PortfolioSummary {
   totalValue: number;
   totalChange24h: number;
   totalChangePercent24h: number;
-    lastUpdated?: string;
+    lastUpdated: string;
     // id: string|number| null
-    topLoser?: [] | null;
-    topGainer?:[]|null
+    topLoser: [] | null;
+    topGainer:[]|null
 }
 
 // export interface PortfolioAllocation {

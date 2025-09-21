@@ -51,9 +51,7 @@ const Navbar: React.FC = () => {
                 />
                           </svg>
                           <WalletStatus
-                            showBalance={true}
-                            showChain={true}
-                            compact={false}
+                            
                           />
             </button>
           </div>

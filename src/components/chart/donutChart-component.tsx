@@ -18,7 +18,8 @@ interface ChartDataPoint {
   value: number;
   percentage: number;
   color: string;
-  symbol: string;
+    symbol: string;
+    [key: string]: unknown;
 }
 
 interface CustomTooltipProps {

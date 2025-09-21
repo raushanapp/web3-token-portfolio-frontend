@@ -1,8 +1,20 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
-import { useAccount, useBalance, } from 'wagmi';
+import { useAccount, useBalance, useReadContracts } from 'wagmi';
+import { formatUnits } from 'viem';
 import DonutChartComponent from '../chart/donutChart-component';
 
-// Token configuration for your supported chains (moved outside component to prevent re-creation)
+// ERC-20 ABI for balanceOf
+const ERC20_ABI = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const;
+
+// Token configuration (unchanged)
 const TOKEN_CONFIG: Record<number, Array<{symbol: string; address: string | null; name: string; color: string}>> = {
   // Ethereum Mainnet
   1: [
@@ -26,7 +38,7 @@ interface TokenBalance {
   decimals: number;
   address: string | null;
   color: string;
-  usdValue?: number;
+  usdValue: number;
 }
 
 interface PortfolioContainerProps {
@@ -36,27 +48,55 @@ interface PortfolioContainerProps {
 const PortfolioContainer: React.FC<PortfolioContainerProps> = ({ className }) => {
   const { address, isConnected, chainId } = useAccount();
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
 
-  // Get supported tokens for current chain (memoized to prevent re-creation)
+  // Get supported tokens for current chain
   const supportedTokens = useMemo(() => {
     if (!chainId || !TOKEN_CONFIG[chainId]) return [];
     return TOKEN_CONFIG[chainId];
   }, [chainId]);
 
-  // Create stable token symbol string for price fetching
-  const tokenSymbolsString = useMemo(() => 
-    supportedTokens.map(token => token.symbol.toLowerCase()).join(','),
-    [supportedTokens]
-  );
+  // Separate native and ERC-20 tokens
+  const { nativeTokens, erc20Tokens } = useMemo(() => {
+    const native = supportedTokens.filter(token => token.address === null);
+    const erc20 = supportedTokens.filter(token => token.address !== null);
+    return { nativeTokens: native, erc20Tokens: erc20 };
+  }, [supportedTokens]);
 
-  // Fetch token prices with proper dependency management
+  // Native token balance (ETH/MATIC)
+  const nativeBalance = useBalance({
+    address,
+    query: {
+      enabled: isConnected && !!address && !!chainId && nativeTokens.length > 0,
+      refetchInterval: 30000,
+    }
+  });
+
+  // ERC-20 token balances using useReadContracts
+  const erc20Contracts = useMemo(() => {
+    if (!address || erc20Tokens.length === 0) return [];
+    
+    return erc20Tokens.map(token => ({
+      address: token.address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'balanceOf' as const,
+      args: [address],
+    }));
+  }, [address, erc20Tokens]);
+
+  const { data: erc20Balances, isLoading: isErc20Loading } = useReadContracts({
+    contracts: erc20Contracts,
+    query: {
+      enabled: isConnected && !!address && !!chainId && erc20Contracts.length > 0,
+      refetchInterval: 30000,
+    }
+  });
+
+  // Fetch token prices
   const fetchTokenPrices = useCallback(async () => {
-    if (!tokenSymbolsString) return;
+    if (supportedTokens.length === 0) return;
     
     try {
-      // Use CoinGecko IDs instead of symbols for better accuracy
       const coinGeckoIds: Record<string, string> = {
         'eth': 'ethereum',
         'btc': 'bitcoin', 
@@ -86,69 +126,73 @@ const PortfolioContainer: React.FC<PortfolioContainerProps> = ({ className }) =>
     } catch (error) {
       console.error('Error fetching token prices:', error);
     }
-  }, [supportedTokens, tokenSymbolsString]);
+  }, [supportedTokens]);
 
-  // Fetch prices only when supported tokens change
+  // Fetch prices when tokens change
   useEffect(() => {
     if (supportedTokens.length > 0) {
       fetchTokenPrices();
     }
-  }, [fetchTokenPrices, supportedTokens.length]); // Use length instead of full array
+  }, [fetchTokenPrices]);
 
-  // Individual balance hooks for each supported token
-  const balanceResults = supportedTokens.map(token => 
-    useBalance({
-      address,
-      token: token.address as `0x${string}` | undefined,
-      enabled: isConnected && !!address && !!chainId,
-      watch: false, // Disable auto-watching to prevent continuous updates
-      // query: {
-      //   refetchInterval: 30000, // Refetch every 30 seconds instead of watching
-      // }
-    })
-  );
-
-  // Process balance data with proper dependency management
+  // Process all balance data
   useEffect(() => {
     if (!isConnected || !address) {
       setTokenBalances([]);
       return;
     }
 
-    const loadingStates = balanceResults.map(result => result.isLoading);
-    const isAnyLoading = loadingStates.some(loading => loading);
-    setIsLoading(isAnyLoading);
+    const isLoading = nativeBalance.isLoading || isErc20Loading;
+    if (isLoading) return;
 
-    // Only process if all balances are loaded and we have prices
-    const allDataLoaded = balanceResults.every(result => 
-      !result.isLoading && (result.data || result.error)
-    );
+    const processedBalances: TokenBalance[] = [];
 
-    if (!allDataLoaded) return;
+    // Process native token balance
+    if (nativeBalance.data && parseFloat(nativeBalance.data.formatted) > 0 && nativeTokens[0]) {
+      const nativeToken = nativeTokens[0];
+      const usdValue = tokenPrices[nativeToken.symbol] 
+        ? parseFloat(nativeBalance.data.formatted) * tokenPrices[nativeToken.symbol]
+        : 0;
 
-    const processedBalances: TokenBalance[] = supportedTokens
-      .map((token, index) => {
-        const balanceResult = balanceResults[index];
-        const balance = balanceResult.data;
-        
-        if (!balance || parseFloat(balance.formatted) === 0) return null;
+      processedBalances.push({
+        symbol: nativeToken.symbol,
+        name: nativeToken.name,
+        balance: nativeBalance.data.value.toString(),
+        formatted: nativeBalance.data.formatted,
+        decimals: nativeBalance.data.decimals,
+        address: nativeToken.address,
+        color: nativeToken.color,
+        usdValue,
+      });
+    }
 
-        const usdValue = tokenPrices[token.symbol] 
-          ? parseFloat(balance.formatted) * tokenPrices[token.symbol]
-          : 0;
+    // Process ERC-20 token balances
+    if (erc20Balances && erc20Balances.length > 0) {
+      erc20Balances.forEach((balanceResult, index) => {
+        if (balanceResult.status === 'success' && balanceResult.result) {
+          const token = erc20Tokens[index];
+          const balance = balanceResult.result as bigint;
+          
+          if (balance > 0n) {
+            const formatted = formatUnits(balance, 18); // Adjust decimals as needed
+            const usdValue = tokenPrices[token.symbol] 
+              ? parseFloat(formatted) * tokenPrices[token.symbol]
+              : 0;
 
-        return {
-          symbol: token.symbol,
-          name: token.name,
-          balance: balance.value.toString(),
-          formatted: balance.formatted,
-          decimals: balance.decimals,
-          address: token.address,
-          color: token.color,
-          usdValue,
-        };
-      })
-      .filter((token): token is TokenBalance => token !== null);
+            processedBalances.push({
+              symbol: token.symbol,
+              name: token.name,
+              balance: balance.toString(),
+              formatted,
+              decimals: 18,
+              address: token.address,
+              color: token.color,
+              usdValue,
+            });
+          }
+        }
+      });
+    }
 
     setTokenBalances(processedBalances);
     
@@ -156,15 +200,16 @@ const PortfolioContainer: React.FC<PortfolioContainerProps> = ({ className }) =>
     isConnected,
     address,
     chainId,
-    // Create stable references for balance results
-    ...balanceResults.map(result => result.data?.formatted),
-    ...balanceResults.map(result => result.isLoading),
-    // Use stable price reference
-    JSON.stringify(tokenPrices),
-    supportedTokens.length
+    nativeBalance.data,
+    nativeBalance.isLoading,
+    erc20Balances,
+    isErc20Loading,
+    tokenPrices,
+    nativeTokens,
+    erc20Tokens,
   ]);
 
-  // Calculate portfolio allocations with stable dependencies
+  // Calculate portfolio allocations
   const portfolioAllocations = useMemo(() => {
     if (tokenBalances.length === 0) return [];
 
@@ -187,6 +232,8 @@ const PortfolioContainer: React.FC<PortfolioContainerProps> = ({ className }) =>
   const totalPortfolioValue = useMemo(() => {
     return portfolioAllocations.reduce((sum, allocation) => sum + allocation.value, 0);
   }, [portfolioAllocations]);
+
+  const isLoading = nativeBalance.isLoading || isErc20Loading;
 
   // Show connection prompt if wallet not connected
   if (!isConnected) {

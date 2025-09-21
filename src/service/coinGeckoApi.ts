@@ -4,7 +4,7 @@ import type {
   Token,
   TokenSearchResult,
   TrendingToken,
-  WatchlistToken,
+//   WatchlistToken,
 } from "../types/token.types";
 
 const COINGECKO_API_BASE =
@@ -233,25 +233,25 @@ class CoinGeckoApiService {
     }
 
   // 6. Supported Coins List - /coins/list (For token ID mapping)
-    async getCoinsList(include_platform: boolean = false): Promise<
-        Array<{
-        id: string;
-        symbol: string;
-        name: string;
-        platforms?: Record<string, string>;
-        }>
-    > {
-        const params = include_platform ? { include_platform: "true" } : {};
+    // async getCoinsList(include_platform: boolean = false): Promise<
+    //     Array<{
+    //     id: string;
+    //     symbol: string;
+    //     name: string;
+    //     platforms?: Record<string, string>;
+    //     }>
+    // > {
+    //     const params = include_platform ? { include_platform: "true" } : {};
 
-        return this.makeRequest<
-        Array<{
-            id: string;
-            symbol: string;
-            name: string;
-            platforms?: Record<string, string>;
-        }>
-        >("/coins/list", params as unknown);
-    }
+    //     return this.makeRequest<
+    //     Array<{
+    //         id: string;
+    //         symbol: string;
+    //         name: string;
+    //         platforms?: Record<string, string>;
+    //     }>
+    //     >("/coins/list", params as unknown);
+    // }
 
   // 7. Individual Coin Data - /coins/{id} (For detailed token info)
     async getCoinData(
@@ -278,31 +278,31 @@ class CoinGeckoApiService {
     }
 
   // 8. Batch fetch watchlist tokens with current prices
-    async getWatchlistTokens(tokenIds: string[]): Promise<WatchlistToken[]> {
-        if (!tokenIds.length) {
-        return [];
-        }
+    // async getWatchlistTokens(tokenIds: string[]): Promise<WatchlistToken[]> {
+    //     if (!tokenIds.length) {
+    //     return [];
+    //     }
 
-        try {
-        const marketData = await this.getCoinsMarkets({
-            ids: tokenIds.join(","),
-            vs_currency: "usd",
-            order: "market_cap_desc",
-            per_page: tokenIds.length,
-            page: 1,
-            sparkline: true,
-            price_change_percentage: "24h",
-        });
+    //     try {
+    //     const marketData = await this.getCoinsMarkets({
+    //         ids: tokenIds.join(","),
+    //         vs_currency: "usd",
+    //         order: "market_cap_desc",
+    //         per_page: tokenIds.length,
+    //         page: 1,
+    //         sparkline: true,
+    //         price_change_percentage: "24h",
+    //     });
 
-        // Transform to WatchlistToken format
-        return marketData.map((data) =>
-            this.transformMarketDataToWatchlistToken(data)
-        );
-        } catch (error) {
-        console.error("Failed to fetch watchlist tokens:", error);
-        throw error;
-        }
-    }
+    //     // Transform to WatchlistToken format
+    //     return marketData.map((data) =>
+    //         this.transformMarketDataToWatchlistToken(data)
+    //     );
+    //     } catch (error) {
+    //     console.error("Failed to fetch watchlist tokens:", error);
+    //     throw error;
+    //     }
+    // }
 
   // 9. Utility method to transform market data to Token interface
     transformMarketDataToToken(data: CoinGeckoMarketData): Token {
@@ -321,17 +321,17 @@ class CoinGeckoApiService {
     }
 
   // 10. Transform market data to WatchlistToken format
-    transformMarketDataToWatchlistToken(
-        data: CoinGeckoMarketData,
-        holdings: number = 0
-    ): WatchlistToken {
-        const token = this.transformMarketDataToToken(data);
-        return {
-        ...token,
-        holdings,
-        value: token.current_price * holdings,
-        };
-    }
+    // transformMarketDataToWatchlistToken(
+    //     data: CoinGeckoMarketData,
+    //     holdings: number = 0
+    // ): WatchlistToken {
+    //     const token = this.transformMarketDataToToken(data);
+    //     return {
+    //     ...token,
+    //     holdings,
+    //     value: token.current_price * holdings,
+    //     };
+    // }
 
   // 11. Get current rate limit status
     getRateLimitStatus() {
