@@ -2,9 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from '../index';
 import type { PortfolioSummary } from '../../types/portfolio.types';
 import { coinGeckoApi } from '../../service/coinGeckoApi';
-// import type { WalletToken } from '../../types/tokens.types'; // Assuming this type exists
 
-// ✅ Base selectors with proper typing
 export const selectWallet = (state: RootState) => state.portfolio;
 export const selectPortfolio = (state: RootState) => state.portfolio.portfolio;
 export const selectWatchlist = (state: RootState) => state.portfolio.watchlist;
@@ -13,20 +11,17 @@ export const selectSearchResults = (state: RootState) => state.portfolio.searchR
 export const selectTrendingTokens = (state: RootState) => state.portfolio.trendingTokens;
 export const selectSearchQuery = (state: RootState) => state.portfolio.searchQuery;
 
-// ✅ Loading selectors
 export const selectPortfolioLoading = (state: RootState) => state.portfolio.loading.portfolio;
 export const selectWatchlistLoading = (state: RootState) => state.portfolio.loading.watchlist;
 export const selectMarketTokensLoading = (state: RootState) => state.portfolio.loading.marketTokens;
 export const selectAddTokenLoading = (state: RootState) => state.portfolio.loading.addToken;
 
-// ✅ Error selectors
 export const selectPortfolioError = (state: RootState) => state.portfolio.error.portfolio;
 export const selectWatchlistError = (state: RootState) => state.portfolio.error.watchlist;
 export const selectMarketTokensError = (state: RootState) => state.portfolio.error.marketTokens;
 export const selectAddTokenError = (state: RootState) => state.portfolio.error.addToken;
 
 
-// ✅ Wallet connection selectors
 export const selectWalletConnection = (state: RootState) => ({
   isConnected: state.portfolio.isConnected,
   address: state.portfolio.address,
@@ -36,10 +31,8 @@ export const selectWalletConnection = (state: RootState) => ({
   connector: state.portfolio.connector,
 });
 
-// ✅ Last updated selectors
 export const selectLastUpdated = (state: RootState) => state.portfolio.lastUpdated;
 
-// ✅ CORRECTED Portfolio Summary Selector
 export const selectPortfolioSummary = createSelector(
   [selectPortfolio],
   (portfolio): PortfolioSummary => {
@@ -87,7 +80,6 @@ export const selectPortfolioSummary = createSelector(
 );
 
 
-// ✅ Enhanced Portfolio allocation selector with colors
 export const selectPortfolioAllocation = createSelector(
   [selectPortfolio],
   (portfolio) => {
@@ -95,13 +87,11 @@ export const selectPortfolioAllocation = createSelector(
       return [];
     }
 
-    // ✅ Use the API service method for allocation calculation
     return coinGeckoApi.calculatePortfolioAllocation(portfolio);
   }
 );
 
 
-// ✅ Parameterized selectors with proper typing
 export const selectIsTokenInPortfolio = createSelector(
   [selectPortfolio, (_: RootState, tokenId: string) => tokenId],
   (portfolio, tokenId) => portfolio.some(token => token.id === tokenId)
@@ -112,13 +102,11 @@ export const selectIsTokenInWatchlist = createSelector(
   (watchlist, tokenId) => watchlist.some(token => token.id === tokenId)
 );
 
-// ✅ Get specific token from portfolio
 export const selectPortfolioTokenById = createSelector(
   [selectPortfolio, (_: RootState, tokenId: string) => tokenId],
   (portfolio, tokenId) => portfolio.find(token => token.id === tokenId) || null
 );
 
-// ✅ All loading states combined
 export const selectAllLoadingStates = createSelector(
   [
     selectPortfolioLoading,
@@ -135,7 +123,6 @@ export const selectAllLoadingStates = createSelector(
   })
 );
 
-// ✅ All error states combined
 export const selectAllErrors = createSelector(
   [
     selectPortfolioError,
@@ -152,7 +139,6 @@ export const selectAllErrors = createSelector(
   })
 );
 
-// ✅ Improved All Tokens selector
 export const selectAllTokens = createSelector(
   [selectPortfolio, selectWatchlist, selectMarketTokens],
   (portfolio, watchlist, marketTokens) => {
@@ -200,7 +186,6 @@ export const selectAllTokens = createSelector(
   }
 );
 
-// ✅ Refresh status selector
 export const selectNeedsRefresh = createSelector(
   [selectLastUpdated],
   (lastUpdated) => {
@@ -218,7 +203,6 @@ export const selectNeedsRefresh = createSelector(
   }
 );
 
-// ✅ Search-related selectors
 export const selectSearchState = createSelector(
   [selectSearchQuery, selectSearchResults],
   (query, results) => ({
@@ -229,7 +213,6 @@ export const selectSearchState = createSelector(
   })
 );
 
-// ✅ Portfolio performance metrics
 export const selectPortfolioMetrics = createSelector(
   [selectPortfolio],
   (portfolio) => {
